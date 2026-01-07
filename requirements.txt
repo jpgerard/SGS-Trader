@@ -11,7 +11,7 @@ pytz==2023.3
 tqdm==4.66.1
 
 # LLM
-openai==1.3.7
+openai>=1.10.0
 
 # Scheduling (optional, for Windows Task Scheduler alternative)
 apscheduler==3.10.4
