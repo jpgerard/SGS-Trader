@@ -1,7 +1,5 @@
-# SGS Trader Universe
-# One ticker symbol per line
-# MVP: Start with high-quality, liquid names
-
+# SGS Trader Universe - S&P 100 Large Cap Stocks
+# Technology
 AAPL
 MSFT
 GOOGL
@@ -9,6 +7,138 @@ AMZN
 NVDA
 META
 TSLA
+NFLX
+ADBE
+CRM
+ORCL
+CSCO
+INTC
+QCOM
+AMD
+NOW
+AVGO
+TXN
+INTU
+MU
+
+# Financial Services
+JPM
+BAC
+WFC
+GS
+MS
+C
+BLK
+SCHW
+AXP
+USB
+PNC
+COF
+TFC
+BK
+
+# Healthcare
+UNH
+JNJ
+LLY
+ABBV
+MRK
+TMO
+ABT
+PFE
+DHR
+AMGN
+BMY
+CVS
+MDT
+GILD
+ISRG
+CI
+HUM
+
+# Consumer Discretionary
+TSLA
+AMZN
+HD
+MCD
+NKE
+SBUX
+LOW
+TJX
+BKNG
+CMG
+MAR
+
+# Consumer Staples
+PG
+KO
+PEP
+WMT
+COST
+PM
+MO
+CL
+MDLZ
+EL
+
+# Industrials
+CAT
+GE
+UNP
+RTX
+HON
+BA
+LMT
+UPS
+DE
+MMM
+GD
+NSC
+
+# Energy
+XOM
+CVX
+COP
+SLB
+EOG
+MPC
+PSX
+VLO
+OXY
+KMI
+
+# Communication Services
+META
+GOOGL
+NFLX
+DIS
+CMCSA
+T
+VZ
+TMUS
+
+# Materials
+LIN
+APD
+ECL
+SHW
+NEM
+FCX
+
+# Real Estate
+AMT
+PLD
+EQIX
+PSA
+
+# Utilities
+NEE
+DUK
+SO
+D
+
+# Other Notable Large Caps
 BRK.B
 V
-JPM
+MA
+PYPL
