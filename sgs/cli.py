@@ -69,6 +69,128 @@ def backfill():
 
 
 @cli.command()
+@click.option('--days', default=730, type=int, help='Number of days of history to fetch (default: 730 = ~2 years)')
+def backfill_prices(days):
+    """
+    Backfill price data for universe stocks and sector ETFs.
+    
+    Fetches daily price data from FMP for all symbols in universe
+    plus all sector ETF tickers needed for hedging.
+    """
+    from datetime import date, timedelta
+    from sgs.api.fmp_client import FMPClient
+    from sgs.database.db import get_session
+    from sgs.database.models import PriceDaily
+    from sgs.config import Config
+    from sgs.utils.logging import get_logger
+    
+    logger = get_logger("cli")
+    
+    try:
+        click.echo(f"Backfilling {days} days of price data...\n")
+        
+        # Load universe symbols
+        universe = Config.load_universe()
+        
+        # Get unique sector ETFs
+        sector_etf_map = Config.load_sector_etf_mapping()
+        sector_etfs = list(set(sector_etf_map.values()))
+        
+        # Combine all symbols
+        all_symbols = set(universe + sector_etfs)
+        
+        click.echo(f"Symbols to fetch:")
+        click.echo(f"  - Stocks: {len(universe)}")
+        click.echo(f"  - Sector ETFs: {len(sector_etfs)}")
+        click.echo(f"  - Total: {len(all_symbols)}\n")
+        
+        # Date range
+        to_date = date.today()
+        from_date = to_date - timedelta(days=days)
+        
+        click.echo(f"Date range: {from_date} to {to_date}\n")
+        
+        fmp_client = FMPClient()
+        session = get_session()
+        
+        total_prices = 0
+        failed_symbols = []
+        
+        for symbol in sorted(all_symbols):
+            click.echo(f"Fetching {symbol}... ", nl=False)
+            
+            try:
+                prices = fmp_client.get_daily_prices(symbol, from_date, to_date)
+                
+                if not prices:
+                    click.echo(f"✗ No data")
+                    failed_symbols.append(symbol)
+                    continue
+                
+                # Store prices
+                new_count = 0
+                for price_record in prices:
+                    import pandas as pd
+                    price_date = pd.to_datetime(price_record['date']).date()
+                    
+                    # Check if exists
+                    existing = session.query(PriceDaily).filter(
+                        PriceDaily.symbol == symbol,
+                        PriceDaily.date == price_date
+                    ).first()
+                    
+                    if existing:
+                        # Update
+                        existing.open = price_record.get('open')
+                        existing.high = price_record.get('high')
+                        existing.low = price_record.get('low')
+                        existing.close = price_record.get('close')
+                        existing.volume = price_record.get('volume')
+                    else:
+                        # Insert
+                        new_price = PriceDaily(
+                            symbol=symbol,
+                            date=price_date,
+                            open=price_record.get('open'),
+                            high=price_record.get('high'),
+                            low=price_record.get('low'),
+                            close=price_record.get('close'),
+                            volume=price_record.get('volume')
+                        )
+                        session.add(new_price)
+                        new_count += 1
+                
+                session.commit()
+                total_prices += len(prices)
+                
+                click.echo(f"✓ {len(prices)} days ({new_count} new)")
+            
+            except Exception as e:
+                logger.error(f"Failed to fetch prices for {symbol}: {e}")
+                click.echo(f"✗ Error")
+                failed_symbols.append(symbol)
+                session.rollback()
+        
+        session.close()
+        
+        # Summary
+        click.echo(f"\n{'='*60}")
+        click.echo(f"Price Backfill Complete")
+        click.echo(f"{'='*60}")
+        click.echo(f"Symbols processed: {len(all_symbols)}")
+        click.echo(f"Total price records: {total_prices}")
+        click.echo(f"Failed symbols: {len(failed_symbols)}")
+        if failed_symbols:
+            click.echo(f"  {', '.join(failed_symbols)}")
+        click.echo(f"{'='*60}")
+    
+    except Exception as e:
+        logger.error(f"Price backfill failed: {e}")
+        click.echo(f"\n✗ Error: {e}", err=True)
+        raise click.Abort()
+
+
+@cli.command()
 @click.option(
     '--window',
     type=click.Choice(['am', 'pm'], case_sensitive=False),
