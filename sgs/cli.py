@@ -234,6 +234,60 @@ def event_study(output):
 
 
 @cli.command()
+@click.option('--symbol', default=None, help='Filter by symbol (optional)')
+def list_transcripts(symbol):
+    """List available transcripts in the database."""
+    from sgs.database.db import get_session
+    from sgs.database.models import Transcript
+    from sgs.utils.logging import get_logger
+    
+    logger = get_logger("cli")
+    session = get_session()
+    
+    try:
+        query = session.query(Transcript)
+        
+        if symbol:
+            query = query.filter(Transcript.symbol == symbol)
+            click.echo(f"Transcripts for {symbol}:\n")
+        else:
+            click.echo("All available transcripts:\n")
+        
+        transcripts = query.order_by(
+            Transcript.symbol, 
+            Transcript.year.desc(), 
+            Transcript.quarter.desc()
+        ).all()
+        
+        if not transcripts:
+            click.echo("No transcripts found in database.")
+            click.echo("Run 'python -m sgs.cli backfill' to load transcripts.")
+            return
+        
+        # Group by symbol
+        from collections import defaultdict
+        by_symbol = defaultdict(list)
+        for t in transcripts:
+            by_symbol[t.symbol].append(t)
+        
+        for sym in sorted(by_symbol.keys()):
+            click.echo(f"\n{sym}:")
+            for t in by_symbol[sym]:
+                date_str = f" ({t.transcript_date})" if t.transcript_date else ""
+                click.echo(f"  - {t.year} Q{t.quarter}{date_str}")
+        
+        click.echo(f"\nTotal: {len(transcripts)} transcripts across {len(by_symbol)} symbols")
+    
+    except Exception as e:
+        logger.error(f"Failed to list transcripts: {e}")
+        click.echo(f"\n✗ Error: {e}", err=True)
+        raise click.Abort()
+    
+    finally:
+        session.close()
+
+
+@cli.command()
 def validate_config():
     """Validate configuration and API keys."""
     from sgs.utils.logging import get_logger
