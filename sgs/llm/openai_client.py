@@ -27,7 +27,7 @@ class OpenAIClient(LLMClient):
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model: str = "gpt-4-turbo",
+        model: str = None,
         temperature: float = 0.2
     ):
         """
@@ -35,14 +35,14 @@ class OpenAIClient(LLMClient):
         
         Args:
             api_key: OpenAI API key (defaults to Config.OPENAI_API_KEY)
-            model: Model name (default: gpt-4-turbo)
+            model: Model name (defaults to Config.OPENAI_MODEL)
             temperature: Sampling temperature (default: 0.2 for deterministic)
         """
         self.api_key = api_key or Config.OPENAI_API_KEY
         if not self.api_key:
             raise ValueError("OpenAI API key not provided")
         
-        self.model = model
+        self.model = model or Config.OPENAI_MODEL
         self.temperature = temperature
         self.client = OpenAI(api_key=self.api_key)
         

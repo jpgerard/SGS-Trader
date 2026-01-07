@@ -22,6 +22,7 @@ class Config:
     # API Keys
     FMP_API_KEY = os.getenv("FMP_API_KEY")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4-turbo")
     SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
     
     # Database
@@ -58,8 +59,7 @@ class Config:
         if not cls.OPENAI_API_KEY:
             errors.append("OPENAI_API_KEY not set in .env")
         
-        if not cls.SLACK_WEBHOOK_URL:
-            errors.append("SLACK_WEBHOOK_URL not set in .env (optional for MVP)")
+        # Slack is optional for MVP; warn at runtime in CLI instead
         
         if not cls.UNIVERSE_FILE.exists():
             errors.append(f"Universe file not found: {cls.UNIVERSE_FILE}")

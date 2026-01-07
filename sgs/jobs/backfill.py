@@ -136,12 +136,21 @@ def backfill_job():
                         # Compute content hash
                         content_hash = FMPClient.hash_transcript(transcript_text)
                         
+                        # Parse transcript date
+                        tdate_raw = td.get('date')
+                        tdate = None
+                        if tdate_raw:
+                            try:
+                                tdate = date.fromisoformat(tdate_raw)
+                            except Exception:
+                                logger.warning(f"Invalid transcript_date '{tdate_raw}' for {symbol} {year} Q{quarter}")
+                        
                         # Store transcript
                         transcript = Transcript(
                             symbol=symbol,
                             year=year,
                             quarter=quarter,
-                            transcript_date=td.get('date'),
+                            transcript_date=tdate,
                             raw_text=transcript_text,
                             content_hash=content_hash,
                             source='FMP'

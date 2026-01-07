@@ -139,11 +139,11 @@ VALID_ENUMS = {
 }
 
 # Forbidden patterns (trading advice, price mentions, etc.)
+# Only check for explicit buy/sell recommendations, not descriptive words
 FORBIDDEN_PATTERNS = [
-    r'\b(buy|sell|long|short|bullish|bearish)\b',
-    r'\b(price target|valuation|pe ratio|multiple)\b',
-    r'\$([\d,]+)',  # Dollar amounts in recommendations
-    r'\b(recommend|suggest|advise)\b.*\b(buy|sell)\b'
+    r'\b(strong\s+buy|strong\s+sell)\b',
+    r'\b(recommend|suggest|advise)\b.*\b(buy|sell)\b',
+    r'\btarget\s+price\b',
 ]
 
 

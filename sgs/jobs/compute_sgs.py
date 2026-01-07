@@ -46,22 +46,17 @@ def compute_sgs_job(symbol: str, year: int, quarter: int, headline_context: Opti
                 logger.error(f"Current transcript not found: {symbol} {year} Q{quarter}")
                 return None
             
-            # Determine prior quarter
-            prior_year, prior_quarter = _get_prior_quarter(year, quarter)
-            
-            # Fetch prior transcript
-            prior_transcript = session.query(Transcript).filter(
-                Transcript.symbol == symbol,
-                Transcript.year == prior_year,
-                Transcript.quarter == prior_quarter
-            ).first()
+            # Find prior transcript using database ordering
+            prior_transcript = _get_prior_transcript(session, symbol, year, quarter)
             
             if not prior_transcript:
                 logger.warning(
-                    f"Prior transcript not found: {symbol} {prior_year} Q{prior_quarter}. "
+                    f"No prior transcript found for {symbol} {year} Q{quarter}. "
                     f"Cannot compute SGS without prior quarter."
                 )
                 return None
+            
+            prior_year, prior_quarter = prior_transcript.year, prior_transcript.quarter
             
             logger.info(
                 f"Found transcript pair: current={year} Q{quarter}, prior={prior_year} Q{prior_quarter}"
@@ -147,21 +142,41 @@ def compute_sgs_job(symbol: str, year: int, quarter: int, headline_context: Opti
             session.close()
 
 
-def _get_prior_quarter(year: int, quarter: int) -> tuple:
+def _get_prior_transcript(session, symbol: str, year: int, quarter: int):
     """
-    Get prior quarter (year, quarter).
+    Find the prior transcript using database ordering.
     
     Args:
+        session: Database session
+        symbol: Stock ticker
         year: Current year
         quarter: Current quarter (1-4)
     
     Returns:
-        Tuple of (prior_year, prior_quarter)
+        Prior Transcript object or None
     """
-    if quarter == 1:
-        return (year - 1, 4)
-    else:
-        return (year, quarter - 1)
+    current = session.query(Transcript).filter(
+        Transcript.symbol == symbol,
+        Transcript.year == year,
+        Transcript.quarter == quarter
+    ).first()
+    
+    if not current:
+        return None
+    
+    # Prefer transcript_date ordering when available
+    if current.transcript_date:
+        return session.query(Transcript).filter(
+            Transcript.symbol == symbol,
+            Transcript.transcript_date != None,
+            Transcript.transcript_date < current.transcript_date
+        ).order_by(Transcript.transcript_date.desc()).first()
+    
+    # Fallback to (year, quarter) ordering
+    return session.query(Transcript).filter(
+        Transcript.symbol == symbol,
+        (Transcript.year < year) | ((Transcript.year == year) & (Transcript.quarter < quarter))
+    ).order_by(Transcript.year.desc(), Transcript.quarter.desc()).first()
 
 
 if __name__ == "__main__":

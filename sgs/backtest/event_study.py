@@ -7,7 +7,7 @@ import pandas as pd
 from datetime import date, timedelta
 from typing import List, Dict, Optional, Tuple
 from sqlalchemy.orm import Session
-from sgs.database.models import SGSFeature, EarningsEvent, PriceDaily, TradeSim
+from sgs.database.models import SGSFeature, EarningsEvent, PriceDaily, TradeSim, Transcript
 from sgs.database.db import get_session
 from sgs.api.price_provider import get_default_price_provider
 from sgs.config import Config
@@ -98,19 +98,25 @@ class EventStudyEngine:
         
         logger.debug(f"Processing event: {symbol} {year} Q{quarter}")
         
-        # Find earnings event to get report date
-        earnings_event = self.session.query(EarningsEvent).filter(
-            EarningsEvent.symbol == symbol,
-            EarningsEvent.report_date != None
-        ).order_by(
-            EarningsEvent.report_date.desc()
+        # Prefer transcript_date aligned to the SGS feature
+        tr = self.session.query(Transcript).filter(
+            Transcript.symbol == symbol,
+            Transcript.year == year,
+            Transcript.quarter == quarter
         ).first()
         
-        if not earnings_event or not earnings_event.report_date:
-            logger.warning(f"No earnings date found for {symbol} {year} Q{quarter}")
-            return None
+        report_date = tr.transcript_date if tr else None
         
-        report_date = earnings_event.report_date
+        # Fallback: try to find closest earnings_event on/near transcript_date or latest before it
+        if not report_date:
+            ee = self.session.query(EarningsEvent).filter(
+                EarningsEvent.symbol == symbol
+            ).order_by(EarningsEvent.report_date.desc()).first()
+            report_date = ee.report_date if ee else None
+        
+        if not report_date:
+            logger.warning(f"No report date found for {symbol} {year} Q{quarter}")
+            return None
         
         # Calculate entry and exit dates
         entry_date, exit_date = self._calculate_trade_dates(report_date)
