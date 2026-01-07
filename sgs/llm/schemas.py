@@ -97,10 +97,18 @@ REQUIRED OUTPUT SCHEMA:
 
 Field rules:
 - confidence must be a float in [0.0, 1.0]
-- rationale_bullets: max 5 items, each ≤ 140 characters
-- each bullet must cite specific language patterns, not opinions
 - If uncertain → use "unclear" and lower confidence
-- Never infer numbers, growth rates, or guidance not stated"""
+- Never infer numbers, growth rates, or guidance not stated
+
+rationale_bullets rules (MUST obey):
+- Exactly 3 to 5 bullets
+- Each bullet MUST be ≤120 characters (strict limit)
+- Prefer short phrases + quoted fragments (not full sentences)
+- Do not include multiple quotes in one bullet
+- Good format: "Key phrase: 'quoted text' vs prior's 'different text'"
+- Bad format: Long explanatory sentences with multiple embedded quotes
+
+Return ONLY valid JSON."""
 
 
 # ============================================================================
@@ -242,16 +250,29 @@ def validate_sgs_json(json_str: str) -> Dict[str, Any]:
     if data['contradiction_with_headlines'] not in VALID_ENUMS['contradiction_with_headlines']:
         raise SGSExtractionError(f"Invalid contradiction_with_headlines: {data['contradiction_with_headlines']}")
     
-    # Validate rationale_bullets
+    # Validate and auto-fix rationale_bullets
     if not isinstance(data['rationale_bullets'], list):
         raise SGSExtractionError("rationale_bullets must be a list")
+    
+    # Keep only first 5 bullets if more provided
     if len(data['rationale_bullets']) > 5:
-        raise SGSExtractionError(f"rationale_bullets must have at most 5 items, got {len(data['rationale_bullets'])}")
+        data['rationale_bullets'] = data['rationale_bullets'][:5]
+    
+    # Auto-truncate bullets that are too long
+    fixed_bullets = []
     for i, bullet in enumerate(data['rationale_bullets']):
         if not isinstance(bullet, str):
             raise SGSExtractionError(f"rationale_bullets[{i}] must be a string")
+        
+        bullet = bullet.strip()
+        
+        # Truncate if too long (leave room for ellipsis)
         if len(bullet) > 140:
-            raise SGSExtractionError(f"rationale_bullets[{i}] exceeds 140 characters: {len(bullet)}")
+            bullet = bullet[:137].rstrip() + "..."
+        
+        fixed_bullets.append(bullet)
+    
+    data['rationale_bullets'] = fixed_bullets
     
     return data
 
