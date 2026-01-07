@@ -229,7 +229,9 @@ def poll(window):
 @cli.command()
 @click.option('--limit', default=2000, type=int, help='Maximum number of transcripts to process')
 @click.option('--workers', default=1, type=int, help='Number of parallel workers (keep at 1 for rate limiting)')
-def compute_sgs_batch(limit, workers):
+@click.option('--symbols-file', default=None, help='Filter to symbols from specific file (e.g., config/validation_universe.txt)')
+@click.option('--recent-quarters', default=None, type=int, help='Only process last N quarters (e.g., 4 for last 4 quarters)')
+def compute_sgs_batch(limit, workers, symbols_file, recent_quarters):
     """
     Batch compute SGS for all transcripts that don't have SGS features yet.
     
@@ -240,20 +242,72 @@ def compute_sgs_batch(limit, workers):
     from sgs.database.models import Transcript, SGSFeature
     from sgs.jobs.compute_sgs import compute_sgs_job
     from sgs.utils.logging import get_logger
+    from pathlib import Path
+    from datetime import date
     
     logger = get_logger("cli")
     
     try:
-        click.echo(f"Starting batch SGS computation (limit: {limit}, workers: {workers})...\n")
+        filter_desc = []
+        if symbols_file:
+            filter_desc.append(f"symbols from {symbols_file}")
+        if recent_quarters:
+            filter_desc.append(f"last {recent_quarters} quarters")
+        
+        filter_str = " AND ".join(filter_desc) if filter_desc else "all transcripts"
+        click.echo(f"Starting batch SGS computation ({filter_str}, limit: {limit})...\n")
+        
+        # Load symbol filter if provided
+        symbol_filter = None
+        if symbols_file:
+            path = Path(symbols_file)
+            if not path.exists():
+                click.echo(f"✗ Error: {symbols_file} not found", err=True)
+                raise click.Abort()
+            
+            with open(path, 'r') as f:
+                symbol_filter = set([line.strip() for line in f if line.strip() and not line.startswith('#')])
+            
+            click.echo(f"Loaded {len(symbol_filter)} symbols from {symbols_file}")
+        
+        # Calculate quarter filter if provided
+        year_quarter_cutoff = None
+        if recent_quarters:
+            current_year = date.today().year
+            current_quarter = (date.today().month - 1) // 3 + 1
+            
+            # Calculate cutoff (year, quarter) for last N quarters
+            quarters_back = recent_quarters - 1
+            cutoff_year = current_year - (quarters_back // 4)
+            cutoff_quarter = current_quarter - (quarters_back % 4)
+            
+            if cutoff_quarter <= 0:
+                cutoff_quarter += 4
+                cutoff_year -= 1
+            
+            year_quarter_cutoff = (cutoff_year, cutoff_quarter)
+            click.echo(f"Filtering to transcripts from {cutoff_year} Q{cutoff_quarter} onwards\n")
         
         session = get_session()
         
-        # Get all transcripts ordered by symbol, year, quarter
-        all_transcripts = session.query(Transcript).order_by(
+        # Build query with filters
+        query = session.query(Transcript).order_by(
             Transcript.symbol,
             Transcript.year.desc(),
             Transcript.quarter.desc()
-        ).limit(limit).all()
+        )
+        
+        if symbol_filter:
+            query = query.filter(Transcript.symbol.in_(symbol_filter))
+        
+        if year_quarter_cutoff:
+            cutoff_year, cutoff_quarter = year_quarter_cutoff
+            query = query.filter(
+                (Transcript.year > cutoff_year) |
+                ((Transcript.year == cutoff_year) & (Transcript.quarter >= cutoff_quarter))
+            )
+        
+        all_transcripts = query.limit(limit).all()
         
         session.close()
         

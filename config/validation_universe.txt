@@ -1,0 +1,33 @@
+# Validation Universe - 25 stocks for initial SGS computation
+# Technology
+NVDA
+AMD
+AVGO
+META
+AMZN
+GOOGL
+TSLA
+CRM
+NOW
+MU
+
+# Industrials
+CAT
+DE
+GE
+HON
+UNP
+UPS
+FDX
+
+# Consumer/Retail
+TGT
+WMT
+HD
+LOW
+NKE
+
+# Financials
+JPM
+GS
+MS
