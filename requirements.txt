@@ -1,0 +1,21 @@
+# SGS Trader MVP Dependencies
+# Python 3.11+
+
+# Core dependencies
+requests==2.31.0
+sqlalchemy==2.0.23
+pandas==2.1.3
+python-dotenv==1.0.0
+click==8.1.7
+pytz==2023.3
+tqdm==4.66.1
+
+# LLM
+openai==1.3.7
+
+# Scheduling (optional, for Windows Task Scheduler alternative)
+apscheduler==3.10.4
+
+# Development/Testing
+pytest==7.4.3
+pytest-cov==4.1.0

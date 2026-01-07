@@ -1,0 +1,14 @@
+# SGS Trader Universe
+# One ticker symbol per line
+# MVP: Start with high-quality, liquid names
+
+AAPL
+MSFT
+GOOGL
+AMZN
+NVDA
+META
+TSLA
+BRK.B
+V
+JPM
