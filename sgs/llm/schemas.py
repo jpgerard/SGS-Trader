@@ -142,7 +142,7 @@ VALID_ENUMS = {
     'guidance_quality.implicit_shift': ['positive', 'neutral', 'negative', 'unclear'],
     'uncertainty_change.direction': ['increase', 'no_change', 'decrease', 'unclear'],
     'temporal_focus_shift.direction': ['more_forward', 'no_change', 'less_forward', 'unclear'],
-    'narrative_shift': ['same', 'subtle_deterioration', 'clear_deterioration', 'subtle_improvement', 'clear_improvement'],
+    'narrative_shift': ['same', 'subtle_deterioration', 'clear_deterioration', 'subtle_improvement', 'clear_improvement', 'unclear'],
     'contradiction_with_headlines': ['yes', 'no', 'ambiguous']
 }
 
@@ -155,6 +155,40 @@ FORBIDDEN_PATTERNS = [
 ]
 
 
+def normalize_sgs_json(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Normalize LLM output to handle vocabulary mismatches.
+    
+    Sometimes LLM uses narrative_shift vocabulary in demand/margin fields.
+    This normalizes them to the correct enums.
+    
+    Args:
+        data: Parsed JSON dict from LLM
+    
+    Returns:
+        Normalized dict
+    """
+    # Normalize demand_trajectory classification
+    demand_class = data.get('demand_trajectory', {}).get('classification', '')
+    if demand_class in ['subtle_improvement', 'clear_improvement']:
+        data['demand_trajectory']['classification'] = 'improving'
+    elif demand_class in ['subtle_deterioration', 'clear_deterioration']:
+        data['demand_trajectory']['classification'] = 'deteriorating'
+    elif demand_class == 'same':
+        data['demand_trajectory']['classification'] = 'stable'
+    
+    # Normalize margin_outlook classification (same logic)
+    margin_class = data.get('margin_outlook', {}).get('classification', '')
+    if margin_class in ['subtle_improvement', 'clear_improvement']:
+        data['margin_outlook']['classification'] = 'improving'
+    elif margin_class in ['subtle_deterioration', 'clear_deterioration']:
+        data['margin_outlook']['classification'] = 'under_pressure'
+    elif margin_class == 'same':
+        data['margin_outlook']['classification'] = 'stable'
+    
+    return data
+
+
 def validate_sgs_json(json_str: str) -> Dict[str, Any]:
     """
     Validate SGS JSON string against schema.
@@ -163,7 +197,7 @@ def validate_sgs_json(json_str: str) -> Dict[str, Any]:
         json_str: JSON string from LLM
     
     Returns:
-        Validated dict
+        Validated and normalized dict
     
     Raises:
         SGSExtractionError: If validation fails
@@ -176,6 +210,9 @@ def validate_sgs_json(json_str: str) -> Dict[str, Any]:
     
     if not isinstance(data, dict):
         raise SGSExtractionError("JSON must be an object/dict")
+    
+    # Normalize vocabulary mismatches before validation
+    data = normalize_sgs_json(data)
     
     # Check required top-level keys
     missing_keys = REQUIRED_KEYS - set(data.keys())

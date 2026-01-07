@@ -60,7 +60,7 @@ def extract_management_sections(text: str, include_qa: bool = False) -> str:
     
     Args:
         text: Cleaned transcript text
-        include_qa: If True, include Q&A section; if False, only prepared remarks
+        include_qa: If True, include Q&A session; if False, only prepared remarks
     
     Returns:
         Extracted text
@@ -68,12 +68,17 @@ def extract_management_sections(text: str, include_qa: bool = False) -> str:
     if not text:
         return ""
     
-    # Find Q&A section start
+    # Maximum chars per transcript (hard cap)
+    MAX_CHARS = 40000
+    
+    # Find Q&A section start with multiple markers
     qa_patterns = [
         r'(?i)Question[- ]and[- ]Answer\s+Session',
         r'(?i)Q&A\s+Session',
         r'(?i)Questions?\s+and\s+Answers?',
-        r'(?i)Operator.*?(?:questions?|Q&A)',
+        r'(?i)Operator.*?(?:first question|questions?|Q&A)',
+        r'(?i)We\s+will\s+now\s+begin\s+the\s+question',
+        r'(?i)Now\s+I\s+would\s+like\s+to\s+turn\s+the.*?questions?',
     ]
     
     qa_start = None
@@ -84,20 +89,33 @@ def extract_management_sections(text: str, include_qa: bool = False) -> str:
             break
     
     if qa_start is None:
-        # No Q&A section found, return all
+        # No Q&A section found - take first MAX_CHARS
+        if len(text) > MAX_CHARS:
+            logger.debug(f"No Q&A found, truncating to {MAX_CHARS} chars")
+            return text[:MAX_CHARS].strip()
         return text
     
     if include_qa:
-        # Return everything
+        # Return everything (with cap)
+        if len(text) > MAX_CHARS:
+            return text[:MAX_CHARS].strip()
         return text
     else:
         # Return only prepared remarks (before Q&A)
         prepared_remarks = text[:qa_start].strip()
         
-        # If prepared remarks are very short, something went wrong - return all
-        if len(prepared_remarks) < 500:
-            logger.warning(f"Prepared remarks seem too short ({len(prepared_remarks)} chars), returning full transcript")
-            return text
+        # If prepared remarks are too short, take first MAX_CHARS as fallback
+        MIN_PREPARED_REMARKS = 2000
+        if len(prepared_remarks) < MIN_PREPARED_REMARKS:
+            logger.warning(
+                f"Prepared remarks too short ({len(prepared_remarks)} chars), "
+                f"using first {MAX_CHARS} chars as fallback"
+            )
+            return text[:MAX_CHARS].strip()
+        
+        # Apply hard cap even to prepared remarks
+        if len(prepared_remarks) > MAX_CHARS:
+            return prepared_remarks[:MAX_CHARS].strip()
         
         return prepared_remarks
 
