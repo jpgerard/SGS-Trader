@@ -105,6 +105,95 @@ def poll(window):
 
 
 @cli.command()
+@click.option('--limit', default=2000, type=int, help='Maximum number of transcripts to process')
+@click.option('--workers', default=1, type=int, help='Number of parallel workers (keep at 1 for rate limiting)')
+def compute_sgs_batch(limit, workers):
+    """
+    Batch compute SGS for all transcripts that don't have SGS features yet.
+    
+    Processes transcripts in order, skipping those that already have SGS
+    or don't have a prior quarter transcript.
+    """
+    from sgs.database.db import get_session
+    from sgs.database.models import Transcript, SGSFeature
+    from sgs.jobs.compute_sgs import compute_sgs_job
+    from sgs.utils.logging import get_logger
+    
+    logger = get_logger("cli")
+    
+    try:
+        click.echo(f"Starting batch SGS computation (limit: {limit}, workers: {workers})...\n")
+        
+        session = get_session()
+        
+        # Get all transcripts ordered by symbol, year, quarter
+        all_transcripts = session.query(Transcript).order_by(
+            Transcript.symbol,
+            Transcript.year.desc(),
+            Transcript.quarter.desc()
+        ).limit(limit).all()
+        
+        session.close()
+        
+        click.echo(f"Found {len(all_transcripts)} transcripts to check\n")
+        
+        processed_count = 0
+        skipped_count = 0
+        success_count = 0
+        failed_count = 0
+        
+        for transcript in all_transcripts:
+            symbol = transcript.symbol
+            year = transcript.year
+            quarter = transcript.quarter
+            
+            # Check if SGS already exists
+            session = get_session()
+            existing_sgs = session.query(SGSFeature).filter(
+                SGSFeature.symbol == symbol,
+                SGSFeature.year == year,
+                SGSFeature.quarter == quarter
+            ).first()
+            session.close()
+            
+            if existing_sgs:
+                logger.debug(f"Skipping {symbol} {year} Q{quarter} - SGS already exists")
+                skipped_count += 1
+                continue
+            
+            click.echo(f"Processing {symbol} {year} Q{quarter}...")
+            
+            # Try to compute SGS
+            result = compute_sgs_job(symbol, year, quarter)
+            
+            if result:
+                success_count += 1
+                trigger_status = "TRIGGERED" if result['trigger_flag'] else "not triggered"
+                click.echo(f"  ✓ Success - {trigger_status}")
+            else:
+                failed_count += 1
+                click.echo(f"  ✗ Failed (likely missing prior quarter)")
+            
+            processed_count += 1
+        
+        # Summary
+        click.echo(f"\n{'='*60}")
+        click.echo(f"Batch SGS Computation Complete")
+        click.echo(f"{'='*60}")
+        click.echo(f"Total checked: {len(all_transcripts)}")
+        click.echo(f"Skipped (already exists): {skipped_count}")
+        click.echo(f"Processed: {processed_count}")
+        click.echo(f"  - Successful: {success_count}")
+        click.echo(f"  - Failed: {failed_count}")
+        click.echo(f"{'='*60}")
+    
+    except Exception as e:
+        logger.error(f"Batch compute-sgs failed: {e}")
+        click.echo(f"\n✗ Error: {e}", err=True)
+        raise click.Abort()
+
+
+@cli.command()
 @click.option('--symbol', required=True, help='Stock ticker symbol (e.g., AAPL)')
 @click.option('--year', required=True, type=int, help='Year (e.g., 2024)')
 @click.option('--quarter', required=True, type=click.IntRange(1, 4), help='Quarter (1-4)')
