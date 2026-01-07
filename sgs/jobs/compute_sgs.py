@@ -62,13 +62,24 @@ def compute_sgs_job(symbol: str, year: int, quarter: int, headline_context: Opti
                 f"Found transcript pair: current={year} Q{quarter}, prior={prior_year} Q{prior_quarter}"
             )
             
+            # Preprocess transcripts to fit token budget
+            from sgs.llm.preprocess import preprocess_transcript
+            
+            current_processed = preprocess_transcript(current_transcript.raw_text)
+            prior_processed = preprocess_transcript(prior_transcript.raw_text)
+            
+            logger.debug(
+                f"Preprocessed transcripts: current={len(current_processed)} chars, "
+                f"prior={len(prior_processed)} chars"
+            )
+            
             # Run LLM extraction
             llm_client = OpenAIClient()
             
             try:
                 sgs_data = llm_client.extract_sgs(
-                    current_transcript=current_transcript.raw_text,
-                    prior_transcript=prior_transcript.raw_text,
+                    current_transcript=current_processed,
+                    prior_transcript=prior_processed,
                     headline_context=headline_context
                 )
                 

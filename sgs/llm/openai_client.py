@@ -16,7 +16,14 @@ from sgs.llm.schemas import (
     has_forbidden_content,
     SGSExtractionError
 )
+
+
 from sgs.utils.logging import get_logger
+
+
+class PayloadTooLargeError(SGSExtractionError):
+    """Raised when request payload exceeds OpenAI token limits."""
+    pass
 
 logger = get_logger("openai_client")
 

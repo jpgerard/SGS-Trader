@@ -36,6 +36,10 @@ class Config:
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     LOG_DIR = ROOT_DIR / "logs"
     
+    # LLM Token Budgeting
+    MAX_TOKENS_PER_TRANSCRIPT = int(os.getenv("MAX_TOKENS_PER_TRANSCRIPT", "9000"))
+    INCLUDE_QA = os.getenv("INCLUDE_QA", "false").lower() in ("true", "1", "yes")
+    
     # Config file paths
     CONFIG_DIR = ROOT_DIR / "config"
     UNIVERSE_FILE = CONFIG_DIR / "universe.txt"
