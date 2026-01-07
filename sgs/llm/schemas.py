@@ -68,32 +68,32 @@ If evidence is mixed or weak, mark fields as "unclear" and reduce confidence.
 Return ONLY valid JSON matching the schema below.
 
 REQUIRED OUTPUT SCHEMA:
-{
-  "demand_trajectory": {
+{{
+  "demand_trajectory": {{
     "classification": "improving|stable|softening|deteriorating|unclear",
     "confidence": 0.0
-  },
-  "margin_outlook": {
+  }},
+  "margin_outlook": {{
     "classification": "improving|stable|under_pressure|unclear",
     "drivers": [],
     "confidence": 0.0
-  },
-  "guidance_quality": {
+  }},
+  "guidance_quality": {{
     "explicit_change": "raised|reaffirmed|lowered|not_given|unclear",
     "implicit_shift": "positive|neutral|negative|unclear"
-  },
-  "uncertainty_change": {
+  }},
+  "uncertainty_change": {{
     "direction": "increase|no_change|decrease|unclear",
     "confidence": 0.0
-  },
-  "temporal_focus_shift": {
+  }},
+  "temporal_focus_shift": {{
     "direction": "more_forward|no_change|less_forward|unclear",
     "confidence": 0.0
-  },
+  }},
   "narrative_shift": "same|subtle_deterioration|clear_deterioration|subtle_improvement|clear_improvement",
   "contradiction_with_headlines": "yes|no|ambiguous",
   "rationale_bullets": []
-}
+}}
 
 Field rules:
 - confidence must be a float in [0.0, 1.0]

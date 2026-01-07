@@ -99,13 +99,18 @@ class OpenAIClient(LLMClient):
                 json_str = response.choices[0].message.content
                 
                 logger.debug(f"LLM response length: {len(json_str)} chars")
+                logger.debug(f"First 200 chars of response: {json_str[:200]}")
                 
                 # Check for forbidden content
                 if has_forbidden_content(json_str):
                     raise SGSExtractionError("Output contains forbidden trading advice or price mentions")
                 
                 # Validate schema
-                sgs_data = validate_sgs_json(json_str)
+                try:
+                    sgs_data = validate_sgs_json(json_str)
+                except SGSExtractionError as e:
+                    logger.error(f"JSON validation failed. Full response:\n{json_str}")
+                    raise
                 
                 # Success!
                 logger.info(f"SGS extraction succeeded on attempt {attempt}")
