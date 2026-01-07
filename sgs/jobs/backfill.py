@@ -103,16 +103,24 @@ def backfill_job():
                     # Get transcript dates for this symbol
                     transcript_dates = fmp_client.get_transcript_dates(symbol)
                     
+                    logger.debug(f"Transcript dates type: {type(transcript_dates)}, count: {len(transcript_dates) if transcript_dates else 0}")
+                    
                     if not transcript_dates:
                         logger.debug(f"No transcript dates found for {symbol}")
                         continue
                     
+                    logger.debug(f"Starting to process {len(transcript_dates)} transcript dates for {symbol}")
+                    
                     # Fetch each missing transcript
                     for td in transcript_dates:
-                        year = td.get('year')
+                        # FMP uses 'fiscalYear' not 'year' in transcript dates endpoint
+                        year = td.get('fiscalYear') or td.get('year')
                         quarter = td.get('quarter')
                         
+                        logger.debug(f"Processing transcript date entry: symbol={symbol}, year={year}, quarter={quarter}")
+                        
                         if not year or not quarter:
+                            logger.debug(f"Skipping invalid entry (missing year/quarter): {td}")
                             continue
                         
                         # Check if already in database
@@ -125,6 +133,8 @@ def backfill_job():
                         if existing_transcript:
                             logger.debug(f"Transcript already exists: {symbol} {year} Q{quarter}")
                             continue
+                        
+                        logger.debug(f"Fetching NEW transcript: {symbol} {year} Q{quarter}")
                         
                         # Fetch transcript text
                         transcript_text = fmp_client.get_transcript(symbol, year, quarter)

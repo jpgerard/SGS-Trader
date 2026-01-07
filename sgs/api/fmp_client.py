@@ -191,12 +191,20 @@ class FMPClient:
         try:
             data = self._make_request(url, params)
             
+            # Debug: log response structure
+            logger.debug(f"Response type: {type(data)}, length: {len(data) if isinstance(data, (list, dict)) else 'N/A'}")
+            
             # FMP returns a list with single dict containing 'content' field
             if isinstance(data, list) and len(data) > 0:
+                logger.debug(f"First item keys: {data[0].keys() if isinstance(data[0], dict) else 'not a dict'}")
                 transcript = data[0].get('content', '')
                 if transcript:
                     logger.info(f"Fetched transcript: {symbol} {year} Q{quarter} ({len(transcript)} chars)")
                     return transcript
+                else:
+                    logger.warning(f"Empty 'content' field in response for {symbol} {year} Q{quarter}")
+            else:
+                logger.warning(f"Unexpected response format for {symbol} {year} Q{quarter}: {type(data)}")
             
             logger.warning(f"No transcript found: {symbol} {year} Q{quarter}")
             return None
