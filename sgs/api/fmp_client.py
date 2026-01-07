@@ -276,8 +276,9 @@ class FMPClient:
         Returns:
             List of daily price records (date, open, high, low, close, volume)
         """
-        url = f"{self.base_url}/api/v3/historical-price-full/{symbol}"
-        params = {}
+        # Use stable endpoint (legacy /api/v3/ endpoints deprecated after Aug 2025)
+        url = f"{self.base_url}/stable/historical-price-eod/full"
+        params = {'symbol': symbol}
         
         if from_date:
             params['from'] = from_date.strftime('%Y-%m-%d')
@@ -289,11 +290,10 @@ class FMPClient:
         try:
             data = self._make_request(url, params)
             
-            # FMP returns {"symbol": "AAPL", "historical": [...]}
-            if isinstance(data, dict) and 'historical' in data:
-                prices = data['historical']
-                logger.info(f"Fetched {len(prices)} daily prices for {symbol}")
-                return prices
+            # Stable endpoint returns array directly (not nested in 'historical' key)
+            if isinstance(data, list):
+                logger.info(f"Fetched {len(data)} daily prices for {symbol}")
+                return data
             
             logger.warning(f"No price data found for {symbol}")
             return []
